@@ -1,6 +1,16 @@
+let path = require('path')
 let Koa = require('koa')
 let Router = require('koa-router')
+let static = require('koa-static')
+let bodyparser = require('koa-bodyparser')
+let views = require('koa-views')
 let app = new Koa()
+
+app.use(static('./public'))
+app.use(bodyparser())
+app.use(views(path.join(__dirname, './view'), {
+  extension: 'ejs'
+}))
 
 let weixinRouter = require('./router/')
 
