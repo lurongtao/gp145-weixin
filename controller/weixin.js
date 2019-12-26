@@ -7,6 +7,8 @@ const { xml2js, genTimestamp, genNonceStr, genTimestampSecond } = require('../ut
 const { get } = require('../utils/http')
 const config = require('../config/config')
 
+const db = require('../model/db')
+
 const auth = async (ctx, next) => {
   let token = 'weixin'
 
@@ -57,16 +59,33 @@ const autoReply = async (ctx, next) => {
   await ctx.render('reply', reply)
 }
 
-const sign = async (ctx, next) => {
+const _getTicket = async () => {
   // 1. 获取 access_token
   let { access_token } = await get({
     url: `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${config.appid}&secret=${config.secret}`
   })
 
+  console.log(access_token)
+
   // 2. 获得 jsapi_ticket
   let { ticket } = await get({
     url: `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${access_token}&type=jsapi`
   })
+
+  return ticket
+}
+
+const sign = async (ctx, next) => {
+  let ticket = ''
+
+  let selectResult = await db('select * from ticket', [])
+  if (selectResult.length === 0) {
+    ticket = await _getTicket()
+    // console.log(ticket)
+    await db('insert into ticket(expires, jsapi_ticket) values(?, ?)', [new Date().getTime(), ticket])
+  } else {
+
+  }
 
   // 3. 定义(获取) 参与签名的字段
   let noncestr = genNonceStr()
@@ -75,7 +94,7 @@ const sign = async (ctx, next) => {
     noncestr,
     timestamp,
     url: config.url,
-    jsapi_ticket: ticket
+    jsapi_ticket: _getTicket()
   }
 
   // 4. 按照字段名排序
